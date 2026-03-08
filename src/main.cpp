@@ -19,7 +19,7 @@ int main() {
 
     Page p2;
     disk.readPage(0, &p2);
-    cout << "Disk se padha : " << p2.data << endl;
+    cout << "Reading from disk : " << p2.data << endl;
 
     return 0;
 }
