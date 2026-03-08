@@ -1,54 +1,25 @@
-#pragma once
-
-#include <fstream>
-#include <string>
-#include "page.h"
+#include <iostream>
+#include "storage/page.h"
+#include "storage/disk_manager.h"
 
 using namespace std;
 
-class DiskManager {
-private:
-    string   db_file;
-    fstream  file;
-    int      next_page_id;
+int main() {
 
-public:
-    DiskManager(const string& filename) {
-        db_file      = filename;
-        next_page_id = 0;
+    DiskManager disk("queryMind.db");
 
-        // file nahi hai toh banao, hai toh kholo
-        file.open(db_file, ios::in | ios::out | ios::binary);
-        if (!file.is_open()) {
-            file.clear();
-            file.open(db_file, ios::out | ios::binary);
-            file.close();
-            file.open(db_file, ios::in | ios::out | ios::binary);
-        }
-    }
+    Page p1;
+    p1.page_id = disk.allocatePage();
+    string msg = "Day 2 - Disk Manager working!";
+    for (int i = 0; i < (int)msg.size(); i++)
+        p1.data[i] = msg[i];
 
-    // naya page ka id do
-    int allocatePage() {
-        return next_page_id++;
-    }
+    disk.writePage(p1.page_id, &p1);
+    cout << "Page " << p1.page_id << " writting page 1" << endl;
 
-    // page ko disk pe likho
-    void writePage(int page_id, Page* page) {
-        int offset = page_id * PAGE_SIZE;
-        file.seekp(offset);
-        file.write(page->data, PAGE_SIZE);
-        file.flush();
-    }
+    Page p2;
+    disk.readPage(0, &p2);
+    cout << "Disk se padha : " << p2.data << endl;
 
-    // disk se page padho
-    void readPage(int page_id, Page* page) {
-        int offset = page_id * PAGE_SIZE;
-        file.seekg(offset);
-        file.read(page->data, PAGE_SIZE);
-    }
-
-    ~DiskManager() {
-        if (file.is_open())
-            file.close();
-    }
-};
+    return 0;
+}
