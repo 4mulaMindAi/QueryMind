@@ -1,25 +1,20 @@
 #include <iostream>
-#include "storage/page.h"
-#include "storage/disk_manager.h"
+#include "storage/lru_replacer.h"
 
 using namespace std;
 
 int main() {
 
-    DiskManager disk("queryMind.db");
+    LRUReplacer lru(4);   // sirf 4 pages memory mein rakh sakte hain
 
-    Page p1;
-    p1.page_id = disk.allocatePage();
-    string msg = "Day 2 - Disk Manager working!";
-    for (int i = 0; i < (int)msg.size(); i++)
-        p1.data[i] = msg[i];
+    lru.access(1);
+    lru.access(2);
+    lru.access(3);
+    lru.access(4);
+    lru.access(2);        // page 2 dobara use hua — recent ho gaya
 
-    disk.writePage(p1.page_id, &p1);
-    cout << "Page " << p1.page_id << " writting page 1" << endl;
-
-    Page p2;
-    disk.readPage(0, &p2);
-    cout << "Reading from disk : " << p2.data << endl;
+    cout << "Evicted: " << lru.evict() << endl;  // 1 aana chahiye
+    cout << "Evicted: " << lru.evict() << endl;  // 3 aana chahiye
 
     return 0;
 }
