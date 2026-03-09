@@ -1,20 +1,37 @@
 #include <iostream>
-#include "storage/lru_replacer.h"
+#include "storage/page.h"
+#include "storage/disk_manager.h"
+#include "storage/buffer_pool.h"
 
 using namespace std;
 
 int main() {
 
-    LRUReplacer lru(4);   // sirf 4 pages memory mein rakh sakte hain
+    DiskManager disk("queryMind.db");
+    BufferPoolManager bpm(3, &disk);  // sirf 3 pages memory mein
 
-    lru.access(1);
-    lru.access(2);
-    lru.access(3);
-    lru.access(4);
-    lru.access(2);        // page 2 dobara use hua — recent ho gaya
+    // 3 naye pages banao
+    int pid1, pid2, pid3;
+    Page* p1 = bpm.newPage(pid1);
+    Page* p2 = bpm.newPage(pid2);
+    Page* p3 = bpm.newPage(pid3);
 
-    cout << "Evicted: " << lru.evict() << endl;  // 1 aana chahiye
-    cout << "Evicted: " << lru.evict() << endl;  // 3 aana chahiye
+    // p1 mein data daalo
+    string msg = "Buffer Pool Working!";
+    for (int i = 0; i < (int)msg.size(); i++)
+        p1->data[i] = msg[i];
+
+    bpm.unpinPage(pid1, true);
+    bpm.unpinPage(pid2, false);
+    bpm.unpinPage(pid3, false);
+
+    // flush karo disk pe
+    bpm.flushPage(pid1);
+    cout << "Page " << pid1 << " flush hua disk pe!" << endl;
+
+    // wapas fetch karo
+    Page* fetched = bpm.fetchPage(pid1);
+    cout << "Fetched data : " << fetched->data << endl;
 
     return 0;
 }
