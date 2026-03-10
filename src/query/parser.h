@@ -1,22 +1,21 @@
 #pragma once
 
+#include <iostream>
 #include <vector>
 #include <string>
 #include "lexer.h"
 
 using namespace std;
 
-// SELECT query ka structure
 struct SelectStatement {
-    vector<string> columns;   // SELECT ke baad kya hai
-    string table;             // FROM ke baad kya hai
-    string condition;         // WHERE ke baad kya hai
+    vector<string> columns;
+    string table;
+    string condition;
 };
 
-// INSERT query ka structure
 struct InsertStatement {
-    string table;             // INTO ke baad kya hai
-    vector<string> values;    // VALUES ke baad kya hai
+    string table;
+    vector<string> values;
 };
 
 class Parser {
@@ -40,12 +39,16 @@ private:
         return false;
     }
 
-    // SELECT parse karo
+public:
+    Parser(vector<Token>& t) {
+        tokens = t;
+        pos    = 0;
+    }
+
     SelectStatement parseSelect() {
         SelectStatement stmt;
-        consume();  // SELECT skip karo
+        consume();  // SELECT skip
 
-        // columns padho
         if (current().type == STAR) {
             stmt.columns.push_back("*");
             consume();
@@ -53,20 +56,18 @@ private:
             stmt.columns.push_back(current().value);
             consume();
             while (current().type == COMMA) {
-                consume();  // comma skip
+                consume();
                 stmt.columns.push_back(current().value);
                 consume();
             }
         }
 
-        // FROM
         match(FROM);
         stmt.table = current().value;
         consume();
 
-        // WHERE (optional)
         if (current().type == WHERE) {
-            consume();  // WHERE skip
+            consume();
             string col = current().value; consume();
             string op  = current().value; consume();
             string val = current().value; consume();
@@ -76,7 +77,6 @@ private:
         return stmt;
     }
 
-    // INSERT parse karo
     InsertStatement parseInsert() {
         InsertStatement stmt;
         consume();  // INSERT skip
@@ -95,12 +95,6 @@ private:
         }
 
         return stmt;
-    }
-
-public:
-    Parser(vector<Token>& t) {
-        tokens = t;
-        pos    = 0;
     }
 
     void parse() {
