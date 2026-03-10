@@ -16,7 +16,6 @@ No external database libraries used — everything built from ground up.
 ---
 
 ## Architecture
-
 ```
 Python Dashboard  →  Visualization & Analytics
 ML Optimizer      →  Intelligent Query Planning
@@ -26,24 +25,25 @@ C++ Core Engine   →  Storage & Query Execution
 
 ## Modules
 
-| Module          | Tech   | Status         |
-| --------------- | ------ | -------------- |
-| Storage Engine  | C++    | 🔄 In Progress |
-| Query Processor | C++    | ⏳ Pending     |
-| ML Optimizer    | Python | ⏳ Pending     |
-| Java Middleware | Java   | ⏳ Pending     |
-| Dashboard       | Python | ⏳ Pending     |
+| Module          | Tech   | Status    |
+| --------------- | ------ | --------- |
+| Storage Engine  | C++    | ✅ Done   |
+| Query Processor | C++    | ✅ Done   |
+| ML Optimizer    | Python | ✅ Done   |
+| Java Middleware | Java   | 🔄 In Progress |
+| Dashboard       | Python | ⏳ Pending |
 
 ---
 
 ## How to Run
-
 ```bash
-# Compile
+# Compile C++ Engine
 g++ -std=c++17 src/main.cpp -o queryMind
-
-# Run
 ./queryMind
+
+# Run ML Optimizer
+source ml/venv/bin/activate
+python3 ml/optimizer.py
 ```
 
 ---
@@ -62,5 +62,11 @@ g++ -std=c++17 src/main.cpp -o queryMind
 - [x] Disk Manager
 - [x] Buffer Pool + LRU
 - [x] B+ Tree Index
-- [ ] SQL Parser
-- [ ] ML Query Optimizer
+- [x] SQL Lexer
+- [x] SQL Parser
+- [x] Execution Engine
+- [x] Terminal UI
+- [x] ML Data Collector
+- [x] ML Random Forest Optimizer
+- [ ] Java Middleware
+- [ ] Web Dashboard
