@@ -16,6 +16,7 @@ No external database libraries used — everything built from ground up.
 ---
 
 ## Architecture
+
 ```
 Python Dashboard  →  Visualization & Analytics
 ML Optimizer      →  Intelligent Query Planning
@@ -25,17 +26,18 @@ C++ Core Engine   →  Storage & Query Execution
 
 ## Modules
 
-| Module          | Tech   | Status    |
-| --------------- | ------ | --------- |
-| Storage Engine  | C++    | ✅ Done   |
-| Query Processor | C++    | ✅ Done   |
-| ML Optimizer    | Python | ✅ Done   |
+| Module          | Tech   | Status         |
+| --------------- | ------ | -------------- |
+| Storage Engine  | C++    | ✅ Done        |
+| Query Processor | C++    | ✅ Done        |
+| ML Optimizer    | Python | ✅ Done        |
 | Java Middleware | Java   | 🔄 In Progress |
-| Dashboard       | Python | ⏳ Pending |
+| Dashboard       | Python | ⏳ Pending     |
 
 ---
 
 ## How to Run
+
 ```bash
 # Compile C++ Engine
 g++ -std=c++17 src/main.cpp -o queryMind
@@ -75,4 +77,4 @@ python3 ml/optimizer.py
 
 ## Dashboard Preview
 
-![QueryMind Dashboard](assets/dashboard.png)
+![QueryMind Dashboard](assets/Screenshot_2026-03-11_at_5_16_51_PM.png)
