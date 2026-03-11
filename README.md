@@ -77,4 +77,4 @@ python3 ml/optimizer.py
 
 ## Dashboard Preview
 
-![QueryMind Dashboard](assets/Screenshot_2026-03-11_at_5_16_51_PM.png)
+![QueryMind Dashboard](assets/dashboard.png)
