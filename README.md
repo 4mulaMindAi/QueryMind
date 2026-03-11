@@ -68,5 +68,5 @@ python3 ml/optimizer.py
 - [x] Terminal UI
 - [x] ML Data Collector
 - [x] ML Random Forest Optimizer
-- [ ] Java Middleware
-- [ ] Web Dashboard
+- [x] Java Middleware
+- [x] Web Dashboard
