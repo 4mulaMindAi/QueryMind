@@ -70,3 +70,5 @@ python3 ml/optimizer.py
 - [x] ML Random Forest Optimizer
 - [x] Java Middleware
 - [x] Web Dashboard
+## Dashboard Preview
+![QueryMind Dashboard](assets/dashboard.png)
