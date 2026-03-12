@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: querymind-api
+    runtime: docker
+    dockerfilePath: ./java-api/querymind-api/Dockerfile
+    dockerContext: ./java-api/querymind-api
+    plan: free
+    envVars:
+      - key: PORT
+        value: 8080
