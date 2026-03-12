@@ -10,6 +10,9 @@ public class QueryController {
 
     private Map<String, List<Map<String, String>>> tables  = new HashMap<>();
     private List<Map<String, String>>              history = new ArrayList<>();
+    private Map<String, String>                    users   = new HashMap<>() {{
+        put("admin", "querymind");
+    }};
 
     @GetMapping("/ping")
     public Map<String, String> ping() {
@@ -17,6 +20,52 @@ public class QueryController {
         res.put("status",  "running");
         res.put("engine",  "QueryMind v1.0");
         res.put("company", "4mulaMindAI");
+        return res;
+    }
+
+    @PostMapping("/signup")
+    public Map<String, String> signup(@RequestBody Map<String, Object> body) {
+        String username = (String) body.get("username");
+        String password = (String) body.get("password");
+        String email    = (String) body.get("email");
+        Map<String, String> res = new HashMap<>();
+        if (username == null || username.isBlank()) {
+            res.put("status",  "error");
+            res.put("message", "Username is required!");
+            return res;
+        }
+        if (password == null || password.length() < 6) {
+            res.put("status",  "error");
+            res.put("message", "Password must be at least 6 characters!");
+            return res;
+        }
+        if (users.containsKey(username)) {
+            res.put("status",  "error");
+            res.put("message", "Username already exists!");
+            return res;
+        }
+        users.put(username, password);
+        res.put("status",  "success");
+        res.put("message", "Account created successfully!");
+        res.put("user",    username);
+        return res;
+    }
+
+    @PostMapping("/login")
+    public Map<String, String> login(@RequestBody Map<String, Object> body) {
+        String username = (String) body.get("username");
+        String password = (String) body.get("password");
+        Map<String, String> res = new HashMap<>();
+        if (users.containsKey(username) &&
+            users.get(username).equals(password)) {
+            res.put("status",  "success");
+            res.put("message", "Login successful!");
+            res.put("token",   "qm-" + username + "-token");
+            res.put("user",    username);
+        } else {
+            res.put("status",  "error");
+            res.put("message", "Invalid username or password!");
+        }
         return res;
     }
 
