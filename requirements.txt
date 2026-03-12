@@ -3,4 +3,3 @@ plotly
 requests
 pandas
 scikit-learn
-numpy
