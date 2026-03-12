@@ -5,58 +5,132 @@ import java.util.*;
 
 @RestController
 @RequestMapping("/api")
+@CrossOrigin(origins = "*")
 public class QueryController {
 
-    private Map<String, List<Map<String, String>>> tables = new HashMap<>();
+    private Map<String, List<Map<String, String>>> tables  = new HashMap<>();
+    private List<Map<String, String>>              history = new ArrayList<>();
 
     @GetMapping("/ping")
     public Map<String, String> ping() {
-        Map<String, String> response = new HashMap<>();
-        response.put("status",  "running");
-        response.put("engine",  "QueryMind v1.0");
-        response.put("company", "4mulaMindAI");
-        return response;
+        Map<String, String> res = new HashMap<>();
+        res.put("status",  "running");
+        res.put("engine",  "QueryMind v1.0");
+        res.put("company", "4mulaMindAI");
+        return res;
     }
 
     @PostMapping("/create")
     public Map<String, String> createTable(@RequestBody Map<String, Object> body) {
-        String tableName = (String) body.get("table");
-        tables.put(tableName, new ArrayList<>());
-        Map<String, String> response = new HashMap<>();
-        response.put("status",  "success");
-        response.put("message", "Table '" + tableName + "' created!");
-        return response;
+        String table = (String) body.get("table");
+        tables.put(table, new ArrayList<>());
+        logHistory("CREATE", table, "success");
+        Map<String, String> res = new HashMap<>();
+        res.put("status",  "success");
+        res.put("message", "Table '" + table + "' created!");
+        return res;
     }
 
     @PostMapping("/insert")
     public Map<String, String> insert(@RequestBody Map<String, Object> body) {
-        String tableName = (String) body.get("table");
+        String table = (String) body.get("table");
         Map<String, String> row = (Map<String, String>) body.get("row");
-        if (!tables.containsKey(tableName)) {
-            Map<String, String> error = new HashMap<>();
-            error.put("status",  "error");
-            error.put("message", "Table not found!");
-            return error;
+        if (!tables.containsKey(table)) {
+            Map<String, String> err = new HashMap<>();
+            err.put("status",  "error");
+            err.put("message", "Table not found!");
+            return err;
         }
-        tables.get(tableName).add(row);
-        Map<String, String> response = new HashMap<>();
-        response.put("status",  "success");
-        response.put("message", "1 row inserted!");
-        return response;
+        tables.get(table).add(row);
+        logHistory("INSERT", table, "success");
+        Map<String, String> res = new HashMap<>();
+        res.put("status",  "success");
+        res.put("message", "1 row inserted!");
+        return res;
     }
 
     @GetMapping("/select/{table}")
     public Map<String, Object> select(@PathVariable String table) {
-        Map<String, Object> response = new HashMap<>();
+        Map<String, Object> res = new HashMap<>();
         if (!tables.containsKey(table)) {
-            response.put("status",  "error");
-            response.put("message", "Table not found!");
-            return response;
+            res.put("status",  "error");
+            res.put("message", "Table not found!");
+            return res;
         }
-        response.put("status", "success");
-        response.put("table",  table);
-        response.put("rows",   tables.get(table));
-        response.put("count",  tables.get(table).size());
-        return response;
+        logHistory("SELECT", table, "success");
+        res.put("status", "success");
+        res.put("table",  table);
+        res.put("rows",   tables.get(table));
+        res.put("count",  tables.get(table).size());
+        return res;
+    }
+
+    @PostMapping("/delete")
+    public Map<String, String> delete(@RequestBody Map<String, Object> body) {
+        String table = (String) body.get("table");
+        String key   = (String) body.get("key");
+        String value = (String) body.get("value");
+        if (!tables.containsKey(table)) {
+            Map<String, String> err = new HashMap<>();
+            err.put("status",  "error");
+            err.put("message", "Table not found!");
+            return err;
+        }
+        tables.get(table).removeIf(row -> value.equals(row.get(key)));
+        logHistory("DELETE", table, "success");
+        Map<String, String> res = new HashMap<>();
+        res.put("status",  "success");
+        res.put("message", "Row deleted!");
+        return res;
+    }
+
+    @PostMapping("/update")
+    public Map<String, String> update(@RequestBody Map<String, Object> body) {
+        String table   = (String) body.get("table");
+        String key     = (String) body.get("key");
+        String value   = (String) body.get("value");
+        Map<String, String> newData = (Map<String, String>) body.get("newData");
+        if (!tables.containsKey(table)) {
+            Map<String, String> err = new HashMap<>();
+            err.put("status",  "error");
+            err.put("message", "Table not found!");
+            return err;
+        }
+        for (Map<String, String> row : tables.get(table)) {
+            if (value.equals(row.get(key))) {
+                row.putAll(newData);
+            }
+        }
+        logHistory("UPDATE", table, "success");
+        Map<String, String> res = new HashMap<>();
+        res.put("status",  "success");
+        res.put("message", "Row updated!");
+        return res;
+    }
+
+    @GetMapping("/tables")
+    public Map<String, Object> listTables() {
+        Map<String, Object> res = new HashMap<>();
+        res.put("status", "success");
+        res.put("tables", new ArrayList<>(tables.keySet()));
+        res.put("count",  tables.size());
+        return res;
+    }
+
+    @GetMapping("/history")
+    public Map<String, Object> getHistory() {
+        Map<String, Object> res = new HashMap<>();
+        res.put("status",  "success");
+        res.put("history", history);
+        return res;
+    }
+
+    private void logHistory(String operation, String table, String status) {
+        Map<String, String> entry = new HashMap<>();
+        entry.put("operation", operation);
+        entry.put("table",     table);
+        entry.put("status",    status);
+        entry.put("time",      new Date().toString());
+        history.add(entry);
     }
 }
