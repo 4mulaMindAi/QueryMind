@@ -23,7 +23,7 @@ st.set_page_config(page_title="QueryMind Dashboard", page_icon="🧠", layout="w
 SUPABASE_URL = "https://mrolmkndebwzgleijcxv.supabase.co"
 
 # Supabase public API key
-SUPABASE_KEY = "YOUR_SUPABASE_KEY"
+SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1yb2xta25kZWJ3emdsZWlqY3h2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM0NzMxMTMsImV4cCI6MjA4OTA0OTExM30.4ZKu0uwhADQyZ9EO1abJVq23jj2JBN2ZFEN-D344BJE"
 
 # Supabase client initialize
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
