@@ -96,7 +96,7 @@ if "logged_in" not in st.session_state:
 
 if not st.session_state.logged_in:
     st.title("🧠 QueryMind")
-    st.markdown("### 4mulaMindAI — Intelligent Database Engine")
+    st.markdown("### 4mulaMind — Intelligent Database Engine")
     st.divider()
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
@@ -141,7 +141,7 @@ if not st.session_state.logged_in:
 # ── MAIN DASHBOARD ─────────────────────────────────────────
 col1, col2 = st.columns([8, 2])
 col1.title("🧠 QueryMind Dashboard")
-col1.markdown("**4mulaMindAI** — Intelligent Database Engine")
+col1.markdown("**4mulaMind** — Intelligent Database Engine")
 if col2.button("🚪 Logout"):
     st.session_state.logged_in = False
     st.rerun()
@@ -169,7 +169,7 @@ if page == "🏠 Overview":
     st.header("System Overview")
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Engine",  "QueryMind v1.0")
-    col2.metric("Company", "4mulaMindAI")
+    col2.metric("Company", "4mulaMind")
     col3.metric("Tables",  len(tables))
     col4.metric("Queries", len(st.session_state.history))
     st.divider()
