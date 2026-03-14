@@ -81,6 +81,6 @@ python3 ml/optimizer.py
 
 ## 🌐 Live Demo
 
-🔗 **Dashboard:** https://querymind-dashboard-app.streamlit.app
+🔗 **Dashboard:** https://4mulamindai-query.streamlit.app
 
 **Login:** `admin` / `querymind`
