@@ -6,10 +6,8 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import requests
 import time
-from optimizer import QueryOptimizer
-from data_collector import DataCollector
+import json
 
 st.set_page_config(
     page_title = "QueryMind Dashboard",
@@ -17,24 +15,26 @@ st.set_page_config(
     layout     = "wide"
 )
 
-API = "http://localhost:8080/api"
+# ════════════════════════════════════════════════════════════
+# DATABASE — Streamlit Session State
+# ════════════════════════════════════════════════════════════
+if "users"   not in st.session_state:
+    st.session_state.users   = {"admin": {"password": "querymind", "email": "admin@querymind.com"}}
+if "tables"  not in st.session_state:
+    st.session_state.tables  = {}
+if "history" not in st.session_state:
+    st.session_state.history = []
 
-def get_tables():
-    try:
-        res = requests.get(f"{API}/tables", timeout=2)
-        return res.json().get("tables", [])
-    except:
-        return []
-
-def api_status():
-    try:
-        res = requests.get(f"{API}/ping", timeout=2)
-        return res.json()
-    except:
-        return None
+def log_history(operation, table, status):
+    st.session_state.history.append({
+        "operation": operation,
+        "table":     table,
+        "status":    status,
+        "time":      time.strftime("%Y-%m-%d %H:%M:%S")
+    })
 
 # ════════════════════════════════════════════════════════════
-# 🔐 LOGIN
+# 🔐 LOGIN / SIGNUP
 # ════════════════════════════════════════════════════════════
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
@@ -48,7 +48,6 @@ if not st.session_state.logged_in:
     with col2:
         tab1, tab2 = st.tabs(["🔐 Login", "📝 Sign Up"])
 
-        # ── LOGIN ──────────────────────────────────────────
         with tab1:
             st.subheader("Welcome Back!")
             login_user = st.text_input("Username", key="login_user")
@@ -57,27 +56,17 @@ if not st.session_state.logged_in:
             if st.button("Login", type="primary", use_container_width=True):
                 if not login_user or not login_pass:
                     st.error("Please fill all fields!")
+                elif login_user in st.session_state.users and \
+                     st.session_state.users[login_user]["password"] == login_pass:
+                    st.session_state.logged_in = True
+                    st.session_state.username  = login_user
+                    st.success("Login successful!")
+                    st.rerun()
                 else:
-                    try:
-                        res  = requests.post(f"{API}/login",
-                                json={"username": login_user,
-                                      "password": login_pass})
-                        data = res.json()
-                        if data["status"] == "success":
-                            st.session_state.logged_in = True
-                            st.session_state.token     = data["token"]
-                            st.session_state.username  = data["user"]
-                            st.success("Login successful!")
-                            st.rerun()
-                        else:
-                            st.error(data["message"])
-                    except:
-                        st.error("API is offline! Run `mvn spring-boot:run`")
+                    st.error("Invalid username or password!")
 
-            st.markdown("---")
             st.caption("Default: **admin** / **querymind**")
 
-        # ── SIGNUP ─────────────────────────────────────────
         with tab2:
             st.subheader("Create Account")
             signup_user  = st.text_input("Username",         key="signup_user")
@@ -92,24 +81,19 @@ if not st.session_state.logged_in:
                     st.error("Passwords do not match!")
                 elif len(signup_pass) < 6:
                     st.error("Password must be at least 6 characters!")
+                elif signup_user in st.session_state.users:
+                    st.error("Username already exists!")
                 else:
-                    try:
-                        res  = requests.post(f"{API}/signup",
-                                json={"username": signup_user,
-                                      "email":    signup_email,
-                                      "password": signup_pass})
-                        data = res.json()
-                        if data["status"] == "success":
-                            st.success("Account created! Please login.")
-                        else:
-                            st.error(data["message"])
-                    except:
-                        st.error("API is offline!")
+                    st.session_state.users[signup_user] = {
+                        "password": signup_pass,
+                        "email":    signup_email
+                    }
+                    st.success("Account created! Please login.")
 
     st.stop()
 
 # ════════════════════════════════════════════════════════════
-# MAIN DASHBOARD (after login)
+# MAIN DASHBOARD
 # ════════════════════════════════════════════════════════════
 col1, col2 = st.columns([8, 2])
 col1.title("🧠 QueryMind Dashboard")
@@ -117,24 +101,20 @@ col1.markdown("**4mulaMindAI** — Intelligent Database Engine")
 if col2.button("🚪 Logout"):
     st.session_state.logged_in = False
     st.rerun()
-
 st.divider()
 
 # Sidebar
 st.sidebar.title("🧠 QueryMind")
+st.sidebar.success(f"👤 {st.session_state.username}")
 st.sidebar.markdown("---")
+st.sidebar.success("🟢 Engine Running")
 
-status = api_status()
-if status:
-    st.sidebar.success("🟢 API Running")
-else:
-    st.sidebar.error("🔴 API Offline")
-
-tables = get_tables()
+tables = list(st.session_state.tables.keys())
 if tables:
     st.sidebar.markdown("### Tables")
     for t in tables:
-        st.sidebar.markdown(f"• `{t}`")
+        count = len(st.session_state.tables[t])
+        st.sidebar.markdown(f"• `{t}` ({count} rows)")
 
 st.sidebar.markdown("---")
 page = st.sidebar.radio("Navigate", [
@@ -155,13 +135,10 @@ if page == "🏠 Overview":
     st.header("System Overview")
 
     col1, col2, col3, col4 = st.columns(4)
-    if status:
-        col1.metric("API Status", "🟢 Running")
-        col2.metric("Engine",     status["engine"])
-        col3.metric("Company",    status["company"])
-        col4.metric("Tables",     len(tables))
-    else:
-        st.error("Java API is offline! Run `mvn spring-boot:run`")
+    col1.metric("Engine",   "QueryMind v1.0")
+    col2.metric("Company",  "4mulaMindAI")
+    col3.metric("Tables",   len(tables))
+    col4.metric("Queries",  len(st.session_state.history))
 
     st.divider()
     col1, col2 = st.columns(2)
@@ -196,89 +173,78 @@ elif page == "💻 SQL Query Box":
     query = st.text_area("Enter SQL Query", height=120,
         placeholder="SELECT * FROM users\nINSERT INTO users VALUES (1, Alice, 22)\nCREATE TABLE products")
 
-    col1, col2 = st.columns([1, 5])
-    run = col1.button("▶️ Run Query", type="primary")
-
-    if run and query.strip():
-        q = query.strip().upper()
+    if st.button("▶️ Run Query", type="primary"):
+        q = query.strip()
+        qu = q.upper()
 
         try:
             # CREATE TABLE
-            if q.startswith("CREATE TABLE"):
-                parts     = query.strip().split()
-                tbl       = parts[2]
-                res       = requests.post(f"{API}/create",
-                                json={"table": tbl})
-                data      = res.json()
-                if data["status"] == "success":
-                    st.success(f"✅ {data['message']}")
+            if qu.startswith("CREATE TABLE"):
+                parts = q.split()
+                tbl   = parts[2]
+                if tbl in st.session_state.tables:
+                    st.error(f"Table '{tbl}' already exists!")
                 else:
-                    st.error(data["message"])
+                    st.session_state.tables[tbl] = []
+                    log_history("CREATE", tbl, "success")
+                    st.success(f"✅ Table '{tbl}' created!")
+                    st.rerun()
 
-            # SELECT * FROM table
-            elif q.startswith("SELECT") and "FROM" in q:
-                parts = query.strip().split()
-                tbl   = parts[parts.index("FROM") + 1] if "FROM" in [p.upper() for p in parts] else None
-                if not tbl:
-                    idx = [p.upper() for p in parts].index("FROM")
-                    tbl = parts[idx + 1]
-                tbl   = tbl.rstrip(";")
-                res   = requests.get(f"{API}/select/{tbl}")
-                data  = res.json()
-                if data["status"] == "success":
-                    if data["count"] > 0:
-                        st.metric("Rows returned", data["count"])
-                        st.dataframe(pd.DataFrame(data["rows"]),
-                                     use_container_width=True)
+            # SELECT
+            elif qu.startswith("SELECT") and "FROM" in qu:
+                parts = q.split()
+                idx   = [p.upper() for p in parts].index("FROM")
+                tbl   = parts[idx+1].rstrip(";")
+                if tbl not in st.session_state.tables:
+                    st.error(f"Table '{tbl}' not found!")
+                else:
+                    rows = st.session_state.tables[tbl]
+                    log_history("SELECT", tbl, "success")
+                    if rows:
+                        df = pd.DataFrame(rows)
+                        # WHERE filter
+                        if "WHERE" in qu:
+                            widx  = [p.upper() for p in parts].index("WHERE")
+                            wcol  = parts[widx+1]
+                            wval  = parts[widx+3].strip("'\"")
+                            df    = df[df[wcol].astype(str) == wval]
+                        st.metric("Rows", len(df))
+                        st.dataframe(df, use_container_width=True)
                     else:
                         st.info("Table is empty!")
-                else:
-                    st.error(data["message"])
 
-            # INSERT INTO table VALUES (...)
-            elif q.startswith("INSERT INTO"):
-                parts = query.strip().split()
+            # INSERT INTO
+            elif qu.startswith("INSERT INTO"):
+                parts = q.split()
                 tbl   = parts[2]
-                # Extract values between ( )
-                raw   = query[query.find("(")+1 : query.find(")")]
+                raw   = q[q.find("(")+1 : q.find(")")]
                 vals  = [v.strip() for v in raw.split(",")]
-                row   = {}
-                if len(vals) >= 1: row["id"]   = vals[0]
-                if len(vals) >= 2: row["name"]  = vals[1]
-                if len(vals) >= 3: row["age"]   = vals[2]
-                # Extra columns
-                keys = ["id","name","age","col4","col5","col6"]
-                for i, v in enumerate(vals):
-                    if i < len(keys):
-                        row[keys[i]] = v
+                keys  = ["id","name","age","col4","col5","col6","col7","col8"]
+                row   = {keys[i]: vals[i] for i in range(min(len(vals), len(keys)))}
+                if tbl not in st.session_state.tables:
+                    st.session_state.tables[tbl] = []
+                st.session_state.tables[tbl].append(row)
+                log_history("INSERT", tbl, "success")
+                st.success("✅ 1 row inserted!")
 
-                res  = requests.post(f"{API}/insert",
-                           json={"table": tbl, "row": row})
-                data = res.json()
-                if data["status"] == "success":
-                    st.success(f"✅ {data['message']}")
-                else:
-                    st.error(data["message"])
-
-            # DELETE FROM table WHERE col = val
-            elif q.startswith("DELETE FROM"):
-                parts = query.strip().split()
+            # DELETE
+            elif qu.startswith("DELETE FROM"):
+                parts = q.split()
                 tbl   = parts[2]
-                if "WHERE" in [p.upper() for p in parts]:
-                    idx   = [p.upper() for p in parts].index("WHERE")
-                    col   = parts[idx+1]
-                    val   = parts[idx+3].strip("'\"")
-                    res   = requests.post(f"{API}/delete",
-                                json={"table": tbl,
-                                      "key":   col,
-                                      "value": val})
-                    data  = res.json()
-                    if data["status"] == "success":
-                        st.success("✅ Row deleted!")
-                    else:
-                        st.error(data["message"])
+                if "WHERE" in qu:
+                    widx  = [p.upper() for p in parts].index("WHERE")
+                    wcol  = parts[widx+1]
+                    wval  = parts[widx+3].strip("'\"")
+                    before = len(st.session_state.tables[tbl])
+                    st.session_state.tables[tbl] = [
+                        r for r in st.session_state.tables[tbl]
+                        if str(r.get(wcol)) != wval
+                    ]
+                    deleted = before - len(st.session_state.tables[tbl])
+                    log_history("DELETE", tbl, "success")
+                    st.success(f"✅ {deleted} row(s) deleted!")
                 else:
-                    st.warning("Add WHERE clause: DELETE FROM table WHERE id = 1")
+                    st.warning("Add WHERE clause!")
 
             else:
                 st.warning("Supported: SELECT, INSERT INTO, CREATE TABLE, DELETE FROM")
@@ -286,7 +252,6 @@ elif page == "💻 SQL Query Box":
         except Exception as e:
             st.error(f"Error: {e}")
 
-    # Query examples
     st.divider()
     st.subheader("📖 Query Examples")
     examples = {
@@ -308,54 +273,50 @@ elif page == "📊 Query Executor":
         col1, col2 = st.columns([3, 1])
         table_name = col1.text_input("Table Name")
         if col2.button("Create", use_container_width=True):
-            res = requests.post(f"{API}/create",
-                    json={"table": table_name})
-            if res.json()["status"] == "success":
-                st.success(res.json()["message"])
-                st.rerun()
+            if not table_name:
+                st.error("Enter table name!")
+            elif table_name in st.session_state.tables:
+                st.error("Table already exists!")
             else:
-                st.error(res.json()["message"])
+                st.session_state.tables[table_name] = []
+                log_history("CREATE", table_name, "success")
+                st.success(f"Table '{table_name}' created!")
+                st.rerun()
 
     with st.expander("📥 Insert Row — Multiple Columns"):
-        tables = get_tables()
+        tables = list(st.session_state.tables.keys())
         if tables:
             ins_table = st.selectbox("Select Table", tables, key="ins_tbl")
-
-            st.markdown("**Define Columns:**")
             num_cols  = st.number_input("Number of Columns", 1, 10, 3)
             cols      = st.columns(num_cols)
             col_names = []
             col_vals  = []
-
             for i, c in enumerate(cols):
-                cn = c.text_input(f"Column {i+1} Name",
-                                   value=["id","name","age"][i] if i < 3 else f"col{i+1}",
-                                   key=f"cn_{i}")
-                cv = c.text_input(f"Column {i+1} Value", key=f"cv_{i}")
+                cn = c.text_input(f"Col {i+1} Name",
+                    value=["id","name","age"][i] if i < 3 else f"col{i+1}",
+                    key=f"cn_{i}")
+                cv = c.text_input(f"Col {i+1} Value", key=f"cv_{i}")
                 col_names.append(cn)
                 col_vals.append(cv)
 
             if st.button("Insert Row"):
                 row = {col_names[i]: col_vals[i] for i in range(num_cols)}
-                res = requests.post(f"{API}/insert",
-                        json={"table": ins_table, "row": row})
-                if res.json()["status"] == "success":
-                    st.success(res.json()["message"])
-                else:
-                    st.error(res.json()["message"])
+                st.session_state.tables[ins_table].append(row)
+                log_history("INSERT", ins_table, "success")
+                st.success("1 row inserted!")
         else:
             st.warning("Please create a table first!")
 
     with st.expander("🔍 View & Search Data", expanded=True):
-        tables = get_tables()
+        tables = list(st.session_state.tables.keys())
         if tables:
             sel_table = st.selectbox("Select Table", tables, key="sel_tbl")
             search    = st.text_input("🔍 Search rows")
             if st.button("Fetch Data"):
-                res  = requests.get(f"{API}/select/{sel_table}")
-                data = res.json()
-                if data["status"] == "success" and data["count"] > 0:
-                    df = pd.DataFrame(data["rows"])
+                rows = st.session_state.tables[sel_table]
+                log_history("SELECT", sel_table, "success")
+                if rows:
+                    df = pd.DataFrame(rows)
                     if search:
                         mask = df.apply(lambda row:
                             row.astype(str).str.contains(
@@ -376,8 +337,8 @@ elif page == "📊 Query Executor":
 # ════════════════════════════════════════════════════════════
 elif page == "🗑️ Delete & Update":
     st.header("Delete & Update Rows")
+    tables = list(st.session_state.tables.keys())
 
-    tables = get_tables()
     if not tables:
         st.warning("Please create a table first!")
     else:
@@ -387,79 +348,69 @@ elif page == "🗑️ Delete & Update":
             del_table = st.selectbox("Table", tables, key="del_tbl")
             col1, col2 = st.columns(2)
             del_key   = col1.text_input("Column", value="id")
-            del_value = col2.text_input("Value")
+            del_value = col2.text_input("Value to delete")
             if st.button("🗑️ Delete Row", type="primary"):
-                res = requests.post(f"{API}/delete",
-                        json={"table": del_table,
-                              "key":   del_key,
-                              "value": del_value})
-                if res.json()["status"] == "success":
-                    st.success("Row deleted successfully!")
-                else:
-                    st.error(res.json()["message"])
+                before = len(st.session_state.tables[del_table])
+                st.session_state.tables[del_table] = [
+                    r for r in st.session_state.tables[del_table]
+                    if str(r.get(del_key)) != del_value
+                ]
+                deleted = before - len(st.session_state.tables[del_table])
+                log_history("DELETE", del_table, "success")
+                st.success(f"{deleted} row(s) deleted!")
 
         with tab2:
             upd_table = st.selectbox("Table", tables, key="upd_tbl")
             col1, col2 = st.columns(2)
             upd_key   = col1.text_input("Find by Column", value="id")
             upd_value = col2.text_input("Find by Value")
-
-            st.markdown("**New Values (fill what you want to update):**")
-            num_upd   = st.number_input("Number of fields", 1, 10, 2)
+            st.markdown("**New Values:**")
+            num_upd   = st.number_input("Fields to update", 1, 10, 2)
             upd_cols  = st.columns(num_upd)
             new_data  = {}
             for i, c in enumerate(upd_cols):
-                k = c.text_input(f"Column", key=f"uk_{i}")
-                v = c.text_input(f"Value",  key=f"uv_{i}")
+                k = c.text_input("Column", key=f"uk_{i}")
+                v = c.text_input("Value",  key=f"uv_{i}")
                 if k and v:
                     new_data[k] = v
 
             if st.button("✏️ Update Row", type="primary"):
-                res = requests.post(f"{API}/update",
-                        json={"table":   upd_table,
-                              "key":     upd_key,
-                              "value":   upd_value,
-                              "newData": new_data})
-                if res.json()["status"] == "success":
-                    st.success("Row updated successfully!")
-                else:
-                    st.error(res.json()["message"])
+                for row in st.session_state.tables[upd_table]:
+                    if str(row.get(upd_key)) == upd_value:
+                        row.update(new_data)
+                log_history("UPDATE", upd_table, "success")
+                st.success("Row updated successfully!")
 
 # ════════════════════════════════════════════════════════════
 # 📉 DATA VISUALIZATION
 # ════════════════════════════════════════════════════════════
 elif page == "📉 Data Visualization":
     st.header("Data Visualization")
+    tables = list(st.session_state.tables.keys())
 
-    tables = get_tables()
     if not tables:
         st.warning("Please create a table and insert data first!")
     else:
         sel_table = st.selectbox("Select Table", tables)
-        res       = requests.get(f"{API}/select/{sel_table}")
-        data      = res.json()
+        rows      = st.session_state.tables[sel_table]
 
-        if data["status"] == "success" and data["count"] > 0:
-            df      = pd.DataFrame(data["rows"])
+        if rows:
+            df = pd.DataFrame(rows)
             st.dataframe(df, use_container_width=True)
-
-            num_cols = df.select_dtypes(include="object").columns.tolist()
-
             st.divider()
-            col1, col2 = st.columns(2)
 
+            col1, col2 = st.columns(2)
             with col1:
                 st.subheader("Bar Chart")
-                if len(df.columns) >= 2:
-                    x_col = st.selectbox("X Axis", df.columns, key="bx")
-                    y_col = st.selectbox("Y Axis", df.columns, key="by")
-                    try:
-                        fig = px.bar(df, x=x_col, y=y_col,
-                                     title=f"{y_col} by {x_col}",
-                                     color=x_col)
-                        st.plotly_chart(fig, use_container_width=True)
-                    except:
-                        st.warning("Select numeric column for Y axis")
+                x_col = st.selectbox("X Axis", df.columns, key="bx")
+                y_col = st.selectbox("Y Axis", df.columns, key="by")
+                try:
+                    fig = px.bar(df, x=x_col, y=y_col,
+                                 title=f"{y_col} by {x_col}",
+                                 color=x_col)
+                    st.plotly_chart(fig, use_container_width=True)
+                except:
+                    st.warning("Select valid columns!")
 
             with col2:
                 st.subheader("Pie Chart")
@@ -470,19 +421,7 @@ elif page == "📉 Data Visualization":
                                   hole=0.3)
                     st.plotly_chart(fig2, use_container_width=True)
                 except:
-                    st.warning("Could not render pie chart")
-
-            st.subheader("Scatter Plot")
-            col1, col2 = st.columns(2)
-            sx = col1.selectbox("X Axis", df.columns, key="sx")
-            sy = col2.selectbox("Y Axis", df.columns, key="sy")
-            try:
-                fig3 = px.scatter(df, x=sx, y=sy,
-                                  title=f"{sy} vs {sx}",
-                                  color=df.columns[0])
-                st.plotly_chart(fig3, use_container_width=True)
-            except:
-                st.warning("Select valid columns for scatter plot")
+                    st.warning("Could not render pie chart!")
         else:
             st.info("Table is empty! Insert data first.")
 
@@ -494,18 +433,22 @@ elif page == "🤖 ML Optimizer":
     st.markdown("Random Forest model that predicts query execution time.")
 
     col1, col2 = st.columns(2)
-
     with col1:
         st.subheader("Train Model")
         samples = st.slider("Training Samples", 500, 2000, 1000)
         if st.button("🚀 Train Model", type="primary"):
             with st.spinner("Training Random Forest model..."):
-                collector = DataCollector()
-                collector.generate_training_data(samples)
-                optimizer = QueryOptimizer()
-                optimizer.train()
-                st.session_state["optimizer"] = optimizer
-            st.success(f"Model trained on {samples} samples!")
+                try:
+                    from data_collector import DataCollector
+                    from optimizer import QueryOptimizer
+                    collector = DataCollector()
+                    collector.generate_training_data(samples)
+                    optimizer = QueryOptimizer()
+                    optimizer.train()
+                    st.session_state["optimizer"] = optimizer
+                    st.success(f"Model trained on {samples} samples!")
+                except Exception as e:
+                    st.error(f"Error: {e}")
 
     with col2:
         st.subheader("Predict Performance")
@@ -540,14 +483,12 @@ elif page == "📈 Performance":
     col1, col2 = st.columns(2)
     with col1:
         data = {
-            "Query":    ["SELECT *", "SELECT WHERE",
-                         "INSERT", "SELECT + Index"],
+            "Query":    ["SELECT *", "SELECT WHERE", "INSERT", "SELECT + Index"],
             "Time(ms)": [45, 12, 8, 3]
         }
         fig = px.bar(pd.DataFrame(data), x="Query", y="Time(ms)",
                      title="Query Execution Time Comparison",
-                     color="Time(ms)",
-                     color_continuous_scale="RdYlGn_r")
+                     color="Time(ms)", color_continuous_scale="RdYlGn_r")
         st.plotly_chart(fig, use_container_width=True)
 
     with col2:
@@ -559,8 +500,7 @@ elif page == "📈 Performance":
         fig2 = px.bar(pd.DataFrame(index_data),
                       x="Scenario", y="Time(ms)",
                       title="Index Impact on Query Performance",
-                      color="Time(ms)",
-                      color_continuous_scale="RdYlGn_r")
+                      color="Time(ms)", color_continuous_scale="RdYlGn_r")
         st.plotly_chart(fig2, use_container_width=True)
 
     st.subheader("📡 Real-time Query Monitor")
@@ -588,17 +528,12 @@ elif page == "📜 Query History":
     if st.button("🔄 Refresh"):
         st.rerun()
 
-    try:
-        res  = requests.get(f"{API}/history", timeout=2)
-        data = res.json()
-        if data["status"] == "success" and data["history"]:
-            df = pd.DataFrame(data["history"])
-            st.metric("Total Queries", len(df))
-            st.dataframe(df, use_container_width=True)
-            fig = px.pie(df, names="operation",
-                         title="Query Type Distribution")
-            st.plotly_chart(fig, use_container_width=True)
-        else:
-            st.info("No queries executed yet!")
-    except:
-        st.error("Cannot connect to API!")
+    if st.session_state.history:
+        df = pd.DataFrame(st.session_state.history)
+        st.metric("Total Queries", len(df))
+        st.dataframe(df, use_container_width=True)
+        fig = px.pie(df, names="operation",
+                     title="Query Type Distribution")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        st.info("No queries executed yet!")
