@@ -38,6 +38,16 @@ def db_signup(username, email, password):
     except Exception as e:
         return False, str(e)
 
+def db_reset_password(username, email, new_password):
+    try:
+        res = supabase.table("users").select("*").eq("username", username).eq("email", email).execute()
+        if res.data:
+            supabase.table("users").update({"password": new_password}).eq("username", username).execute()
+            return True, "Password reset successfully!"
+        return False, "Username or email not found!"
+    except Exception as e:
+        return False, str(e)
+
 def db_get_tables():
     try:
         res = supabase.table("db_tables").select("*").execute()
@@ -99,7 +109,8 @@ if not st.session_state.logged_in:
     st.divider()
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
-        tab1, tab2 = st.tabs(["🔐 Login", "📝 Sign Up"])
+        tab1, tab2, tab3 = st.tabs(["🔐 Login", "📝 Sign Up", "🔑 Forgot Password"])
+
         with tab1:
             st.subheader("Welcome Back!")
             lu = st.text_input("Username", key="lu")
@@ -116,6 +127,7 @@ if not st.session_state.logged_in:
                     else:
                         st.error(res)
             st.caption("Default: **admin** / **querymind**")
+
         with tab2:
             st.subheader("Create Account")
             su  = st.text_input("Username",         key="su")
@@ -133,6 +145,26 @@ if not st.session_state.logged_in:
                     ok, msg = db_signup(su, se, sp)
                     if ok:
                         st.success(msg + " Please login.")
+                    else:
+                        st.error(msg)
+
+        with tab3:
+            st.subheader("Reset Password")
+            fp_user  = st.text_input("Username",         key="fp_user")
+            fp_email = st.text_input("Email",            key="fp_email")
+            fp_new   = st.text_input("New Password",     type="password", key="fp_new")
+            fp_new2  = st.text_input("Confirm Password", type="password", key="fp_new2")
+            if st.button("Reset Password", type="primary", use_container_width=True):
+                if not fp_user or not fp_email or not fp_new:
+                    st.error("Please fill all fields!")
+                elif fp_new != fp_new2:
+                    st.error("Passwords do not match!")
+                elif len(fp_new) < 6:
+                    st.error("Password must be 6+ characters!")
+                else:
+                    ok, msg = db_reset_password(fp_user, fp_email, fp_new)
+                    if ok:
+                        st.success("✅ " + msg + " Please login.")
                     else:
                         st.error(msg)
     st.stop()
