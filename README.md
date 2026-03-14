@@ -78,3 +78,9 @@ python3 ml/optimizer.py
 ## Dashboard Preview
 
 ![QueryMind Dashboard](assets/dashboard.png)
+
+## 🌐 Live Demo
+
+🔗 **Dashboard:** https://querymind-dashboard-app.streamlit.app
+
+**Login:** `admin` / `querymind`
