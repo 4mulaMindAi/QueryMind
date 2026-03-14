@@ -90,7 +90,6 @@ def db_update_row(table_name, key, value, new_data):
     except Exception as e:
         return False, str(e)
 
-# ── LOGIN / SIGNUP ─────────────────────────────────────────
 if "logged_in" not in st.session_state:
     st.session_state.logged_in = False
 
@@ -138,7 +137,6 @@ if not st.session_state.logged_in:
                         st.error(msg)
     st.stop()
 
-# ── MAIN DASHBOARD ─────────────────────────────────────────
 col1, col2 = st.columns([8, 2])
 col1.title("🧠 QueryMind Dashboard")
 col1.markdown("**4mulaMind** — Intelligent Database Engine")
@@ -164,14 +162,19 @@ page = st.sidebar.radio("Navigate", [
     "🤖 ML Optimizer", "📈 Performance", "📜 Query History"
 ])
 
-# ── OVERVIEW ───────────────────────────────────────────────
 if page == "🏠 Overview":
     st.header("System Overview")
-    col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Engine",  "QueryMind v1.0")
-    col2.metric("Company", "4mulaMind")
-    col3.metric("Tables",  len(tables))
-    col4.metric("Queries", len(st.session_state.history))
+    try:
+        res = supabase.table("users").select("*").execute()
+        total_users = len(res.data)
+    except:
+        total_users = 0
+    col1, col2, col3, col4, col5 = st.columns(5)
+    col1.metric("Engine",   "QueryMind v1.0")
+    col2.metric("Company",  "4mulaMind")
+    col3.metric("Tables",   len(tables))
+    col4.metric("Queries",  len(st.session_state.history))
+    col5.metric("👥 Users", total_users)
     st.divider()
     col1, col2 = st.columns(2)
     with col1:
@@ -185,7 +188,6 @@ if page == "🏠 Overview":
         fig = px.pie(values=[30,30,20,20], names=["C++","Python","Java","SQL"], hole=0.4)
         st.plotly_chart(fig, use_container_width=True)
 
-# ── SQL QUERY BOX ──────────────────────────────────────────
 elif page == "💻 SQL Query Box":
     st.header("SQL Query Box")
     query = st.text_area("Enter SQL Query", height=120,
@@ -239,7 +241,6 @@ elif page == "💻 SQL Query Box":
                       "Select": "SELECT * FROM students", "Delete": "DELETE FROM students WHERE id = 1"}.items():
         st.code(ex, language="sql")
 
-# ── QUERY EXECUTOR ─────────────────────────────────────────
 elif page == "📊 Query Executor":
     st.header("Query Executor")
     with st.expander("➕ Create Table"):
@@ -284,7 +285,6 @@ elif page == "📊 Query Executor":
         else:
             st.warning("Create a table first!")
 
-# ── DELETE & UPDATE ────────────────────────────────────────
 elif page == "🗑️ Delete & Update":
     st.header("Delete & Update")
     if not tables:
@@ -316,7 +316,6 @@ elif page == "🗑️ Delete & Update":
                 (st.success if ok else st.error)(msg)
                 if ok: log_history("UPDATE", ut, "success")
 
-# ── DATA VISUALIZATION ─────────────────────────────────────
 elif page == "📉 Data Visualization":
     st.header("Data Visualization")
     if not tables:
@@ -347,7 +346,6 @@ elif page == "📉 Data Visualization":
         else:
             st.info("Table is empty!")
 
-# ── ML OPTIMIZER ───────────────────────────────────────────
 elif page == "🤖 ML Optimizer":
     st.header("ML Query Optimizer")
     c1, c2 = st.columns(2)
@@ -384,7 +382,6 @@ elif page == "🤖 ML Optimizer":
                 elif hi: st.success("✅ Optimized!")
                 else: st.info("ℹ️ Looks good!")
 
-# ── PERFORMANCE ────────────────────────────────────────────
 elif page == "📈 Performance":
     st.header("Performance Analytics")
     c1, c2 = st.columns(2)
@@ -407,7 +404,6 @@ elif page == "📈 Performance":
             ph.plotly_chart(fig3, use_container_width=True)
             time.sleep(0.5)
 
-# ── QUERY HISTORY ──────────────────────────────────────────
 elif page == "📜 Query History":
     st.header("Query History")
     if st.button("🔄 Refresh"): st.rerun()
